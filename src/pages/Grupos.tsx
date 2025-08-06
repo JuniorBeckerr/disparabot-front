@@ -4,6 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { CrudModal } from "../components/CrudModal"
 import { CrudTable } from "../components/CrudTable"
+import { CreateGroupModal } from "../components/ui/CreateGroupModal"
 // @ts-ignore
 import { SendMessageModal } from "../components/SendMessageModal"
 import { useGetGroups } from "../hooks/groups/useGetGroups"
@@ -45,22 +46,33 @@ export const Grupos = () => {
     const deleteGroup = useDeleteGroup()
     const sendMessage = useSendGroupMessage()
     const updateTrigger = useUpdateGroupTrigger()
-
     const { toast, showToast, hideToast } = useToast()
 
-    // Estado do modal principal
+    // Estado do modal principal (edit/view)
     const [modalOpen, setModalOpen] = useState(false)
-    const [modalMode, setModalMode] = useState<ModalMode>("create")
+    const [modalMode, setModalMode] = useState<ModalMode>("edit")
     const [selectedItem, setSelectedItem] = useState<Grupo | null>(null)
-    const [formData, setFormData] = useState<
-        Partial<
-            Grupo & {
-            participants: string
-            selectedInstances: number[]
-            triggerInstanceId: number
-        }
-        >
-    >({})
+    const [formData, setFormData] = useState<Partial<Grupo>>({})
+
+    // Estado do modal de criação customizado
+    const [createModalOpen, setCreateModalOpen] = useState(false)
+    const [createFormData, setCreateFormData] = useState<{
+        nome: string
+        descricao: string
+        categoryId: number | ""
+        imageUrl: string
+        participants: string
+        selectedInstances: number[]
+        triggerInstanceId: number | ""
+    }>({
+        nome: "",
+        descricao: "",
+        categoryId: "",
+        imageUrl: "",
+        participants: "",
+        selectedInstances: [],
+        triggerInstanceId: "",
+    })
 
     // Estado do modal de mensagem
     const [messageModal, setMessageModal] = useState<{
@@ -80,23 +92,27 @@ export const Grupos = () => {
         group: null,
     })
 
-    // Funções do modal principal
+    // Funções do modal principal (edit/view)
     const openModal = (mode: ModalMode, item?: Grupo) => {
+        if (mode === "create") {
+            // Abrir modal customizado para criação
+            setCreateFormData({
+                nome: "",
+                descricao: "",
+                categoryId: "",
+                imageUrl: "",
+                participants: "",
+                selectedInstances: [],
+                triggerInstanceId: instancias[0]?.id || "",
+            })
+            setCreateModalOpen(true)
+            return
+        }
+
         setModalMode(mode)
         setSelectedItem(item || null)
         if (item) {
-            setFormData({
-                ...item,
-                participants: "",
-                selectedInstances: [],
-                triggerInstanceId: instancias[0]?.id || 0,
-            })
-        } else {
-            setFormData({
-                participants: "",
-                selectedInstances: [],
-                triggerInstanceId: instancias[0]?.id || 0,
-            })
+            setFormData({ ...item })
         }
         setModalOpen(true)
     }
@@ -107,8 +123,25 @@ export const Grupos = () => {
         setFormData({})
     }
 
+    const closeCreateModal = () => {
+        setCreateModalOpen(false)
+        setCreateFormData({
+            nome: "",
+            descricao: "",
+            categoryId: "",
+            imageUrl: "",
+            participants: "",
+            selectedInstances: [],
+            triggerInstanceId: "",
+        })
+    }
+
     const handleFieldChange = (field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }))
+    }
+
+    const handleCreateFieldChange = (field: string, value: any) => {
+        setCreateFormData((prev) => ({ ...prev, [field]: value }))
     }
 
     const handleDelete = (id: number, confirmMessage: string) => {
@@ -182,8 +215,6 @@ export const Grupos = () => {
 
     const getModalTitle = (entityName: string) => {
         switch (modalMode) {
-            case "create":
-                return `Criar ${entityName}`
             case "edit":
                 return `Editar ${entityName}`
             case "view":
@@ -193,37 +224,52 @@ export const Grupos = () => {
         }
     }
 
-    // Submit do formulário
+    // Submit do formulário de criação customizado
+    const handleCreateGroupSubmit = (data: any) => {
+        const participants = data.participants
+            ? data.participants
+                .split(",")
+                .map((p: string) => p.trim())
+                .filter(Boolean)
+            : []
+
+        // Garantir que selectedInstances seja um array de números
+        const selectedInstancesArray = Array.isArray(data.selectedInstances)
+            ? data.selectedInstances
+                .map((id: any) => (typeof id === "string" ? Number.parseInt(id) : id))
+                .filter((id: number) => !isNaN(id))
+            : []
+
+        // Filtrar instâncias adicionais (remover a instância disparadora se estiver incluída)
+        const extraInstances = selectedInstancesArray.filter((id: number) => id !== data.triggerInstanceId)
+
+        const createData = {
+            instance_id: data.triggerInstanceId,
+            subject: data.nome,
+            category_id: data.categoryId || undefined,
+            participants,
+            description: data.descricao || "",
+            image_url: data.imageUrl || "",
+            extra_instances: extraInstances,
+            trigger_instance_id: data.triggerInstanceId,
+        }
+
+        console.log("Dados para criação:", createData) // Debug
+
+        createGroup.mutate(createData, {
+            onSuccess: () => {
+                showToast("Grupo criado com sucesso!", "success")
+                closeCreateModal()
+            },
+            onError: (error: any) => {
+                showToast(`Erro ao criar grupo: ${error.message || "Erro desconhecido"}`, "error")
+            },
+        })
+    }
+
+    // Submit do formulário de edição (CrudModal original)
     const handleGroupSubmit = (data: any) => {
-        if (modalMode === "create") {
-            const participants = data.participants
-                ? data.participants
-                    .split(",")
-                    .map((p: string) => p.trim())
-                    .filter(Boolean)
-                : []
-
-            const createData = {
-                instance_id: data.triggerInstanceId,
-                subject: data.nome,
-                category_id: data.categoryId || undefined,
-                participants,
-                description: data.descricao || "",
-                image_url: data.imageUrl || "",
-                extra_instances: data.selectedInstances?.filter((id: number) => id !== data.triggerInstanceId) || [],
-                trigger_instance_id: data.triggerInstanceId,
-            }
-
-            createGroup.mutate(createData, {
-                onSuccess: () => {
-                    showToast("Grupo criado com sucesso!", "success")
-                    closeModal()
-                },
-                onError: (error: any) => {
-                    showToast(`Erro ao criar grupo: ${error.message || "Erro desconhecido"}`, "error")
-                },
-            })
-        } else if (modalMode === "edit" && selectedItem) {
+        if (modalMode === "edit" && selectedItem) {
             const updateData = {
                 name: data.nome,
                 description: data.descricao,
@@ -250,7 +296,7 @@ export const Grupos = () => {
         }
     }
 
-    // Configuração dos campos do formulário
+    // Configuração dos campos do formulário (apenas para edit/view)
     const getFormFields = () => {
         const baseFields = [
             {
@@ -286,36 +332,7 @@ export const Grupos = () => {
             },
         ]
 
-        if (modalMode === "create") {
-            baseFields.push(
-                {
-                    name: "participants",
-                    label: "Participantes (números separados por vírgula)",
-                    type: "textarea" as const,
-                    required: true,
-                },
-                {
-                    name: "triggerInstanceId",
-                    label: "Instância Disparadora",
-                    type: "select" as const,
-                    required: true,
-                    options: instancias.map((inst: any) => ({
-                        value: inst.id,
-                        label: inst.nome,
-                    })),
-                },
-                {
-                    name: "selectedInstances",
-                    label: "Instâncias Adicionais",
-                    type: "select",
-                    required: false,
-                    options: instancias.map((inst: any) => ({
-                        value: inst.id,
-                        label: inst.nome,
-                    })),
-                },
-            )
-        } else if (modalMode === "edit") {
+        if (modalMode === "edit") {
             baseFields.push({
                 name: "isActive",
                 label: "Status",
@@ -331,7 +348,7 @@ export const Grupos = () => {
         return baseFields
     }
 
-    // Configuração das colunas da tabela
+    // Resto do código permanece igual...
     const tableColumns = [
         {
             key: "nome" as keyof Grupo,
@@ -461,7 +478,6 @@ export const Grupos = () => {
         },
     ]
 
-    // Configuração dos campos para visualização em cards
     const cardFields = [
         {
             key: "nome" as keyof Grupo,
@@ -520,7 +536,6 @@ export const Grupos = () => {
         },
     ]
 
-    // Campos extras para visualização
     const extraViewFields = selectedItem
         ? [
             { label: "Group ID", value: selectedItem.groupId },
@@ -608,108 +623,120 @@ export const Grupos = () => {
 
     if (isLoading) {
         return (
-                <div style={containerStyle}>
-                    <div>Carregando grupos...</div>
-                </div>
+            <div style={containerStyle}>
+                <div>Carregando grupos...</div>
+            </div>
         )
     }
 
     return (
-            <div style={containerStyle}>
-                <div style={headerStyle}>
-                    <h1 style={titleStyle}>Grupos WhatsApp</h1>
-                    <button
-                        style={{
-                            ...createButtonStyle,
-                            opacity: createGroup.isPending ? 0.7 : 1,
-                            cursor: createGroup.isPending ? "not-allowed" : "pointer",
-                        }}
-                        onClick={() => openModal("create")}
-                        disabled={createGroup.isPending}
-                        onMouseEnter={(e) => {
-                            if (!createGroup.isPending) {
-                                e.currentTarget.style.backgroundColor = "#2563eb"
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (!createGroup.isPending) {
-                                e.currentTarget.style.backgroundColor = "#3b82f6"
-                            }
-                        }}
-                    >
-                        {createGroup.isPending ? "⏳ Criando..." : "➕ Criar Grupo"}
-                    </button>
-                </div>
-
-                {/* Estatísticas */}
-                <div style={statsStyle}>
-                    <div style={statCardStyle}>
-                        <div style={statValueStyle}>{totalGrupos}</div>
-                        <div style={statLabelStyle}>Total</div>
-                    </div>
-                    <div style={statCardStyle}>
-                        <div style={statValueStyle}>{gruposAtivos}</div>
-                        <div style={statLabelStyle}>Ativos</div>
-                    </div>
-                    <div style={statCardStyle}>
-                        <div style={statValueStyle}>{totalMembros}</div>
-                        <div style={statLabelStyle}>Membros</div>
-                    </div>
-                    <div style={statCardStyle}>
-                        <div style={statValueStyle}>{mediaMembrosPorGrupo}</div>
-                        <div style={statLabelStyle}>Média</div>
-                    </div>
-                </div>
-
-                <CrudTable
-                    data={grupos}
-                    columns={tableColumns}
-                    cardFields={cardFields}
-                    onView={(grupo) => openModal("view", grupo)}
-                    onEdit={(grupo) => openModal("edit", grupo)}
-                    onDelete={(grupo) =>
-                        handleDelete(
-                            grupo.id,
-                            `Tem certeza que deseja excluir o grupo "${grupo.nome}"? Esta ação não pode ser desfeita.`,
-                        )
-                    }
-                    defaultView="table"
-                    showViewToggle={true}
-                    isLoading={deleteGroup.isPending}
-                />
-
-                <CrudModal
-                    isOpen={modalOpen}
-                    mode={modalMode}
-                    title={getModalTitle("Grupo")}
-                    fields={getFormFields()}
-                    data={formData}
-                    onClose={closeModal}
-                    onSubmit={handleGroupSubmit}
-                    onChange={handleFieldChange}
-                    extraViewFields={extraViewFields}
-                    isLoading={createGroup.isPending || updateGroup.isPending}
-                />
-
-                <SendMessageModal
-                    isOpen={messageModal.isOpen}
-                    groupName={messageModal.group?.nome || ""}
-                    onClose={() => setMessageModal({ isOpen: false, group: null })}
-                    onSend={handleSendMessageSubmit}
-                    isLoading={sendMessage.isPending}
-                />
-
-                <ChangeTriggerModal
-                    isOpen={triggerModal.isOpen}
-                    groupName={triggerModal.group?.nome || ""}
-                    currentTrigger={triggerModal.group?.categoryId} // Assumindo que você vai mapear o trigger atual
-                    instances={instancias}
-                    onClose={() => setTriggerModal({ isOpen: false, group: null })}
-                    onChangeTrigger={handleChangeTriggerSubmit}
-                    isLoading={updateTrigger.isPending}
-                />
-
-                <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} />
+        <div style={containerStyle}>
+            <div style={headerStyle}>
+                <h1 style={titleStyle}>Grupos WhatsApp</h1>
+                <button
+                    style={{
+                        ...createButtonStyle,
+                        opacity: createGroup.isPending ? 0.7 : 1,
+                        cursor: createGroup.isPending ? "not-allowed" : "pointer",
+                    }}
+                    onClick={() => openModal("create")}
+                    disabled={createGroup.isPending}
+                    onMouseEnter={(e) => {
+                        if (!createGroup.isPending) {
+                            e.currentTarget.style.backgroundColor = "#2563eb"
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!createGroup.isPending) {
+                            e.currentTarget.style.backgroundColor = "#3b82f6"
+                        }
+                    }}
+                >
+                    {createGroup.isPending ? "⏳ Criando..." : "➕ Criar Grupo"}
+                </button>
             </div>
+
+            <div style={statsStyle}>
+                <div style={statCardStyle}>
+                    <div style={statValueStyle}>{totalGrupos}</div>
+                    <div style={statLabelStyle}>Total</div>
+                </div>
+                <div style={statCardStyle}>
+                    <div style={statValueStyle}>{gruposAtivos}</div>
+                    <div style={statLabelStyle}>Ativos</div>
+                </div>
+                <div style={statCardStyle}>
+                    <div style={statValueStyle}>{totalMembros}</div>
+                    <div style={statLabelStyle}>Membros</div>
+                </div>
+                <div style={statCardStyle}>
+                    <div style={statValueStyle}>{mediaMembrosPorGrupo}</div>
+                    <div style={statLabelStyle}>Média</div>
+                </div>
+            </div>
+
+            <CrudTable
+                data={grupos}
+                columns={tableColumns}
+                cardFields={cardFields}
+                onView={(grupo) => openModal("view", grupo)}
+                onEdit={(grupo) => openModal("edit", grupo)}
+                onDelete={(grupo) =>
+                    handleDelete(
+                        grupo.id,
+                        `Tem certeza que deseja excluir o grupo "${grupo.nome}"? Esta ação não pode ser desfeita.`,
+                    )
+                }
+                defaultView="table"
+                showViewToggle={true}
+                isLoading={deleteGroup.isPending}
+            />
+
+            {/* Modal customizado para criação */}
+            <CreateGroupModal
+                isOpen={createModalOpen}
+                onClose={closeCreateModal}
+                onSubmit={handleCreateGroupSubmit}
+                formData={createFormData}
+                onChange={handleCreateFieldChange}
+                instancias={instancias}
+                categorias={categorias}
+                isLoading={createGroup.isPending}
+            />
+
+            {/* Modal original para edição/visualização */}
+            <CrudModal
+                isOpen={modalOpen}
+                mode={modalMode}
+                title={getModalTitle("Grupo")}
+                fields={getFormFields()}
+                data={formData}
+                onClose={closeModal}
+                onSubmit={handleGroupSubmit}
+                onChange={handleFieldChange}
+                extraViewFields={extraViewFields}
+                isLoading={updateGroup.isPending}
+            />
+
+            <SendMessageModal
+                isOpen={messageModal.isOpen}
+                groupName={messageModal.group?.nome || ""}
+                onClose={() => setMessageModal({ isOpen: false, group: null })}
+                onSend={handleSendMessageSubmit}
+                isLoading={sendMessage.isPending}
+            />
+
+            <ChangeTriggerModal
+                isOpen={triggerModal.isOpen}
+                groupName={triggerModal.group?.nome || ""}
+                currentTrigger={triggerModal.group?.categoryId}
+                instances={instancias}
+                onClose={() => setTriggerModal({ isOpen: false, group: null })}
+                onChangeTrigger={handleChangeTriggerSubmit}
+                isLoading={updateTrigger.isPending}
+            />
+
+            <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} />
+        </div>
     )
 }
