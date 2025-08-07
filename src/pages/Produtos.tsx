@@ -161,7 +161,7 @@ export const Produtos = () => {
             name: "descricao",
             label: "Descrição",
             type: "textarea" as const,
-            required: true,
+            required: false,
         },
         {
             name: "preco",
@@ -279,7 +279,11 @@ export const Produtos = () => {
             label: "Descrição",
             render: (produto: Produto) => (
                 <div style={{ maxWidth: "200px" }}>
-                    {produto.descricao.length > 60 ? `${produto.descricao.substring(0, 60)}...` : produto.descricao}
+                    {produto.descricao
+                        ? (produto.descricao.length > 60
+                            ? `${produto.descricao.substring(0, 60)}...`
+                            : produto.descricao)
+                        : "--"}
                 </div>
             ),
         },
@@ -429,8 +433,12 @@ export const Produtos = () => {
         {
             key: "descricao" as keyof Produto,
             secondary: true,
-            render: (produto: Produto) =>
-                produto.descricao.length > 80 ? `${produto.descricao.substring(0, 80)}...` : produto.descricao,
+            render: (produto: Produto) => {
+                const descricao = produto.descricao ?? "--";
+                return descricao.length > 80
+                    ? `${descricao.substring(0, 80)}...`
+                    : descricao;
+            },
         },
         {
             key: "preco" as keyof Produto,
