@@ -1,6 +1,4 @@
 "use client"
-
-import type React from "react"
 import { useState } from "react"
 import { CrudModal } from "../components/CrudModal"
 import { CrudTable } from "../components/CrudTable"
@@ -288,9 +286,7 @@ export const Linktree = () => {
                 isLoading={createLink.isPending || updateLink.isPending}
             />
 
-            {toast.visible && (
-                <Toast type={toast.type} title={toast.title} description={toast.description} onClose={hideToast} />
-            )}
+            <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} />
         </div>
     )
 }

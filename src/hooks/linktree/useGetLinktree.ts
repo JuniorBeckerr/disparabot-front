@@ -14,7 +14,7 @@ export interface LinktreeItem {
 }
 
 export const useGetLinktree = () => {
-    return useQuery<{ id: number }[], LinktreeItem[]>({
+    return useQuery<LinktreeItem[], unknown, LinktreeItem[]>({
         queryKey: ["linktree"],
         queryFn: async () => {
             const res = await api.get("/linktree")
