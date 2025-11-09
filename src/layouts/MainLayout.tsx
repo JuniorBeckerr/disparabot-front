@@ -66,6 +66,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
         { name: "Instâncias", path: "/instancias", icon: "🖥️" },
         { name: "Scrappings", path: "/scrappings", icon: "🔍" },
         { name: "Categorias", path: "/categorias", icon: "📂" },
+        { name: "Linktree", path: "/linktree", icon: "🌳" },
         { name: "Agendamentos", path: "/agendamentos", icon: "📅" },
         { name: "Templates", path: "/templates", icon: "📄" },
     ]

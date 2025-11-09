@@ -8,6 +8,8 @@ import { Scrappings } from "../pages/Scrappings"
 import { Grupos } from "../pages/Grupos"
 import { Agendamentos } from "../pages/Agendamentos"
 import { Templates } from "../pages/Templates"
+import { Linktree } from "../pages/Linktree"
+import PublicLinktree from "../pages/PublicLinktree"
 import { MainLayout } from "../layouts/MainLayout"
 
 export const AppRouter = () => {
@@ -75,6 +77,14 @@ export const AppRouter = () => {
                     }
                 />
                 <Route
+                    path="/linktree"
+                    element={
+                        <MainLayout>
+                            <Linktree />
+                        </MainLayout>
+                    }
+                />
+                <Route
                     path="/templates"
                     element={
                         <MainLayout>
@@ -82,6 +92,8 @@ export const AppRouter = () => {
                         </MainLayout>
                     }
                 />
+                {/* Página pública (sem autenticação) */}
+                <Route path="/links" element={<PublicLinktree />} />
 
                 {/* Redirecionar raiz para dashboard */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

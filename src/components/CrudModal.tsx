@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useState } from "react"
 
 interface Field {
     name: string
@@ -9,6 +10,7 @@ interface Field {
     required?: boolean
     options?: { value: string; label: string }[]
     readOnly?: boolean
+    presetIcons?: string[]
 }
 
 interface CrudModalProps<T> {
@@ -38,6 +40,8 @@ export function CrudModal<T>({
     if (!isOpen) return null
 
     const isReadOnly = mode === "view"
+
+    const [openPickers, setOpenPickers] = useState<Record<string, boolean>>({})
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -94,14 +98,84 @@ export function CrudModal<T>({
 
             default:
                 return (
-                    <input
-                        type={field.type}
-                        style={baseInputStyle}
-                        value={value}
-                        onChange={(e) => onChange(field.name, e.target.value)}
-                        required={field.required}
-                        readOnly={isReadOnly || field.readOnly}
-                    />
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", position: "relative", overflow: "visible" }}>
+                        <input
+                            type={field.type}
+                            style={{ ...baseInputStyle, flex: 1 }}
+                            value={value}
+                            onChange={(e) => onChange(field.name, e.target.value)}
+                            required={field.required}
+                            readOnly={isReadOnly || field.readOnly}
+                        />
+                        {field.presetIcons && !isReadOnly && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setOpenPickers((prev) => ({ ...prev, [field.name]: !prev[field.name] }))
+                                }
+                                style={{
+                                    backgroundColor: "#f3f4f6",
+                                    color: "#374151",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 6,
+                                    padding: "8px 10px",
+                                    fontSize: 14,
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                Ícones
+                            </button>
+                        )}
+                        {field.presetIcons && openPickers[field.name] && (
+                            <div
+                                style={{
+                                    position: "absolute",
+                                    top: "105%",
+                                    left: 0,
+                                    right: 0,
+                                    backgroundColor: "#ffffff",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 8,
+                                    padding: 8,
+                                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                                    zIndex: 2000,
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(8, 1fr)",
+                                        gap: 8,
+                                    }}
+                                >
+                                    {field.presetIcons.map((emoji) => (
+                                        <button
+                                            key={emoji}
+                                            type="button"
+                                            onClick={() => {
+                                                onChange(field.name, emoji)
+                                                setOpenPickers((prev) => ({ ...prev, [field.name]: false }))
+                                            }}
+                                            title={emoji}
+                                            style={{
+                                                fontSize: 20,
+                                                lineHeight: "32px",
+                                                height: 32,
+                                                width: "100%",
+                                                cursor: "pointer",
+                                                border: "1px solid #e5e7eb",
+                                                backgroundColor: "#ffffff",
+                                                borderRadius: 6,
+                                            }}
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )
         }
     }
