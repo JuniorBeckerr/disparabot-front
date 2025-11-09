@@ -245,7 +245,7 @@ export const Linktree = () => {
         <div>
             <h1 style={{ fontSize: "20px", fontWeight: 600, marginBottom: 16 }}>Linktree</h1>
 
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 16, display: "flex", gap: "8px" }}>
                 <button
                     onClick={() => openModal("create")}
                     style={{
@@ -260,6 +260,23 @@ export const Linktree = () => {
                 >
                     Novo Link
                 </button>
+                <a
+                    href="/links"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        backgroundColor: "#10b981",
+                        color: "white",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "8px 12px",
+                        cursor: "pointer",
+                        fontWeight: 500,
+                        textDecoration: "none",
+                    }}
+                >
+                    Ver Linktree
+                </a>
             </div>
 
             <CrudTable<LinktreeItem>
